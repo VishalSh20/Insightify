@@ -16,12 +16,11 @@ const generateAccessAndRefereshTokens = async(userId) =>{
         const accessToken = user.generateAccessToken()
         const refreshToken = user.generateRefreshToken()
 
-        user.refreshToken = refreshToken
+        user.refreshToken = refreshToken;
         await user.save({ validateBeforeSave: false })
 
         return {accessToken, refreshToken};
-
-
+        
     } catch (error) {
         throw new ApiError(500, "Something went wrong while generating referesh and access token")
     }
@@ -120,7 +119,9 @@ const loginUser = asyncHandler(async (req, res) =>{
             200, 
             "User logged In Successfully",
             {
-                user: loggedInUser, accessToken, refreshToken
+                user: loggedInUser,
+                 accessToken,
+                 refreshToken
             }
         )
     )
@@ -140,34 +141,46 @@ const logoutUser = asyncHandler(async(req,res)=>{
     .json(new ApiResponse(200,"User Logged Out"));
 });
 
-const refreshAccessToken = asyncHandler(async(req,res)=>{
-    const refreshToken = req.cookie("refreshToken") || req.body?.refreshToken;
-    if(!refreshToken)
-        throw new ApiError(401,"No refresh token");
+const refreshAccessToken = asyncHandler(async (req, res) => {
+    const incomingRefreshToken = req.cookies.refreshToken || req.body.refreshToken
 
-    const decodedToken = jwt.verify(refreshToken,process.env.REFRESH_TOKEN_SECRET);
+    if (!incomingRefreshToken) {
+        throw new ApiError(401, "unauthorized request")
+    }
+
     try {
-        const user = await User.findById(decodedToken?._id);
-        if(!user || user.refreshToken !== refreshToken)
-            throw new ApiError("Invalid Refresh Token");
+        const decodedToken = jwt.verify(
+            incomingRefreshToken,
+            process.env.REFRESH_TOKEN_SECRET
+        )
     
-        const [accessToken,newRefreshToken] = await generateAccessAndRefereshTokens(user._id);
-        if(!accessToken || !newRefreshToken)
-            throw new ApiError(500,"Something went wrong in generation of new tokens");
+        const user = await User.findById(decodedToken?._id)
     
-        res
+        if (!user) {
+            throw new ApiError(401, "Invalid refresh token")
+        }
+    
+        if (incomingRefreshToken !== user?.refreshToken) {
+            throw new ApiError(401, "Refresh token is expired or used")     
+        }
+    
+        const {accessToken, refreshToken} = await generateAccessAndRefereshTokens(user._id)
+        console.log(accessToken,refreshToken);
+        return res
         .status(200)
-        .cookie("accessToken",accessToken)
-        .cookie("refreshToken",refreshToken)
-        .json(new ApiResponse(
-            200,
-            "Tokens refreshed successfully",
-            {
-                accessToken,refreshToken:newRefreshToken
-            }
-        ))
+        .cookie("accessToken", accessToken, cookieOptions)
+        .cookie("refreshToken", refreshToken, cookieOptions)
+        .json(
+            new ApiResponse(
+                200, 
+                {accessToken, 
+                refreshToken
+            },
+                "Access token refreshed"
+            )
+        )
     } catch (error) {
-        throw new ApiError(401,error.message);
+        throw new ApiError(401, error?.message || "Invalid refresh token")
     }
 
 });
@@ -176,7 +189,51 @@ const getCurrentUser = asyncHandler(async(req,res)=>{
     const user = await User.aggregate(
         [
             {
-                $match:{_id:req.user._id}
+                $match:{username:req.user.username}
+            },
+            {
+                $lookup:{
+                    from:"follows",
+                    localField:"_id",
+                    foreignField:"followedTo",
+                    as:"followers"
+                }
+            },
+            {
+                $lookup:{
+                    from:"follows",
+                    localField:"_id",
+                    foreignField:"followedBy",
+                    as:"followings"
+                }
+            },
+            {
+                $addFields:{
+                    followerCount:{
+                        $size : "$followers"
+                    },
+                    followingCount:{
+                        $size: "$followings"
+                    }
+                }
+            }
+        ]);
+
+        if(!user) 
+            throw new ApiError(500,"Error in retrieving user details");
+
+        res
+        .status(200)
+        .json(
+            new ApiResponse(200,"User retrieved successfully",user)
+        )
+});
+const getUserProfile = asyncHandler(async(req,res)=>{
+    const username = req.params?.username;
+    const user = await User.aggregate(
+        [
+            {
+                $match:{username}
             },
             {
                 $lookup:{
@@ -263,7 +320,7 @@ const getCurrentUser = asyncHandler(async(req,res)=>{
                     pipeline:[
                         {
                             $project:{
-                                title,thumbnail
+                                title
                             }
                         }
                     ]
@@ -324,30 +381,30 @@ const changeCurrentPassword = asyncHandler(async(req, res) => {
 });
 
 const changeAvatar = asyncHandler(async(req,res)=>{
-    const avatarLocalPath = req.file?.path;
-    const currentAvatarUrl = req.user?.avatar;
-   try {
-     if(currentAvatarUrl){
-        deleteResourceByUrl(currentAvatarUrl);
-     }
+   const newAvatarPath = req.file.path;
+   console.log(newAvatarPath);
+   const oldAvatarURL = req.user.url;
+   if(oldAvatarURL !== undefined && oldAvatarURL !== null){
+    try {
+        await deleteResourceByUrl(oldAvatarURL);
+    } catch (error) {
+       console.error("Old file removal failed");
+    }
+   }
+   
  
-     const updatedAvatar = await uploadOnCloudinary(avatarLocalPath);
-     if(!updatedAvatar)
-         throw new ApiError(500,"Unable to update the avatar");
- 
-     await User.findByIdAndUpdate(req.user._id,
-         {
-             $set: {avatar:updatedAvatar.url}
-         }
-     );
- 
-     res
-     .status(200)
-     .json(new ApiResponse(200,"Avatar changed successfully"));  
-   } 
-   catch (error) {
-    throw new ApiError(500,error.message);
-   }  
+    const updatedAvatar = await uploadOnCloudinary(newAvatarPath);
+    if(!updatedAvatar)
+        throw new ApiError(500,"Avatar upload failed");
+    const user = await User.findByIdAndUpdate(req.user._id,{
+        $set:{avatar:updatedAvatar.url}
+    },{new:true});
+    if(!user)
+    throw new ApiError(500,error?.message || "Uploading failed"); 
+
+   res
+   .status(200)
+   .json(new ApiResponse(200,"Avatar uploaded successfully"));
 });
 
 const deleteCurrentUser = asyncHandler(async(req,res)=>{
@@ -371,6 +428,7 @@ export {
     updateUserDetails,
     changeCurrentPassword,
     getCurrentUser,
+    getUserProfile,
     changeAvatar,
     deleteCurrentUser
 };

@@ -4,7 +4,7 @@ import { asyncHandler } from "../utils/asyncHandler.util.js";
 import jwt from "jsonwebtoken";
 
 const verifyAccessToken = asyncHandler(async(req,res,next)=>{
-    const token = req.cookie("accessToken") || req.header("Authorization")?.replace('Bearer ',"");
+    const token = req.cookies.accessToken || req.header("Authorization")?.replace('Bearer ',"");
     if(!token)
         throw new ApiError(401,"No Access Token available");
 

@@ -1,7 +1,7 @@
 import multer from "multer";
 import path from "path";
 
-const directory = "../../public/temp";
+const directory = "./public/temp";
 const storage = multer.diskStorage({
     destination:(req,file,cb)=>{
         let subDirectory = '';
@@ -21,7 +21,7 @@ const storage = multer.diskStorage({
 
     filename:(req,file,cb)=>{
         const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9)
-        cb(null, file.fieldname + '-' + uniqueSuffix);
+        cb(null, file.fieldname + '-' + uniqueSuffix + '.' + file.mimetype.split('/')[1]);
     }
 });
 

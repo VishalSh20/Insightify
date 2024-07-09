@@ -31,8 +31,6 @@ const signupUser = asyncHandler(async(req,res)=>{
     if([username,email,password,fullName].includes(undefined))
         throw new ApiError(400,"All fields are required");
 
-    bio = bio || "";
-
     if(email.indexOf('@') === -1)
         throw new ApiError(400,"Email is invalid");
 
@@ -50,14 +48,14 @@ const signupUser = asyncHandler(async(req,res)=>{
     const avatarLocalPath = req.files?.avatar?.path;
     console.log(avatarLocalPath);
     
-    const avatar = await uploadOnCloudinary(avatarLocalPath);
+    const avatar = await uploadOnCloudinary(avatarLocalPath,users,username);
     
     const user = await User.create({
         username,
         email,
         password,
         fullName,
-        bio,
+        bio:bio||"",
         avatar: avatar?.url
     });
 
@@ -393,7 +391,7 @@ const changeAvatar = asyncHandler(async(req,res)=>{
    }
    
  
-    const updatedAvatar = await uploadOnCloudinary(newAvatarPath);
+    const updatedAvatar = await uploadOnCloudinary(newAvatarPath,users,user.username);
     if(!updatedAvatar)
         throw new ApiError(500,"Avatar upload failed");
     const user = await User.findByIdAndUpdate(req.user._id,{
@@ -408,6 +406,8 @@ const changeAvatar = asyncHandler(async(req,res)=>{
 });
 
 const deleteCurrentUser = asyncHandler(async(req,res)=>{
+    
+
     try {
         await User.findByIdAndDelete(req.user._id);
         res

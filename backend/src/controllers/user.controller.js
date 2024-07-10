@@ -48,7 +48,12 @@ const signupUser = asyncHandler(async(req,res)=>{
     const avatarLocalPath = req.files?.avatar?.path;
     console.log(avatarLocalPath);
     
-    const avatar = await uploadOnCloudinary(avatarLocalPath,users,username);
+    try{
+        const avatar = await uploadOnCloudinary(avatarLocalPath,"users",username);
+    }
+    catch(error){
+        console.error(error);
+    }
     
     const user = await User.create({
         username,
@@ -226,6 +231,7 @@ const getCurrentUser = asyncHandler(async(req,res)=>{
             new ApiResponse(200,"User retrieved successfully",user)
         )
 });
+
 const getUserProfile = asyncHandler(async(req,res)=>{
     const username = req.params?.username;
     const user = await User.aggregate(
@@ -267,66 +273,6 @@ const getUserProfile = asyncHandler(async(req,res)=>{
                     followingCount:{
                         $size: "$followings"
                     }
-                }
-            },
-            {
-                $lookup:{
-                    from: "blogs",
-                    localField:"blogs",
-                    foreignField:"_id",
-                    as:"blogs",
-                    pipeline:[
-                        {
-                            $project:{
-                                title,coverImage
-                            }
-                        }
-                    ]
-                }
-            },
-            {
-                $addFields:{
-                    blogs: {$first:"$blogs"}
-                }
-            },
-            {
-                $lookup:{
-                    from: "videos",
-                    localField:"videos",
-                    foreignField:"_id",
-                    as:"videos",
-                    pipeline:[
-                        {
-                            $project:{
-                                title,thumbnail
-                            }
-                        }
-                    ]
-                }   
-            },
-            {
-                $addFields:{
-                    blogs: {$first:"$videos"}
-                }
-            },
-            {
-                $lookup:{
-                    from: "discussions",
-                    localField:"discussions",
-                    foreignField:"_id",
-                    as:"discussions",
-                    pipeline:[
-                        {
-                            $project:{
-                                title
-                            }
-                        }
-                    ]
-                }   
-            },
-            {
-                $addFields:{
-                    blogs: {$first:"$discussions"}
                 }
             }
         ]
@@ -419,6 +365,7 @@ const deleteCurrentUser = asyncHandler(async(req,res)=>{
         throw new ApiError(500,error.message);
     }
 });
+
 
 export {
     signupUser,

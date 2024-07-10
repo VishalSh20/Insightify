@@ -7,21 +7,22 @@ const commentSchema = new Schema(
             type: String,
             required: true
         },
-        video: {
+        videoId: {
             type: Schema.Types.ObjectId,
             ref: "Video"
         },
-        blog: {
+        blogId: {
             type: Schema.Types.ObjectId,
             ref: "Blog"
         },
-        discussion:{
+        discussionId:{
             type: Schema.Types.ObjectId,
             ref: "Discussion"
         },
         commentedBy: {
             type: Schema.Types.ObjectId,
-            ref: "User"
+            ref: "User",
+            required:true
         }
     },
     {

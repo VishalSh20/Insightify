@@ -36,24 +36,6 @@ const userSchema = new Schema({
         type:String,
         trim:true
     },
-    blogs:[
-        {
-            type:Schema.Types.ObjectId,
-            ref:"Blog"
-        }
-    ],
-    videos:[
-        {
-            type:Schema.Types.ObjectId,
-            ref:"Video"
-        }
-    ],
-    discussions:[
-        {
-            type:mongoose.Schema.Types.ObjectId,
-            ref:"Discussion"
-        }
-    ],
     refreshToken:{
         type:String
     }

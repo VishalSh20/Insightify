@@ -3,7 +3,10 @@ import mongoose,{Schema} from "mongoose";
 const tagSchema = new Schema({
     name:{
         type:String,
-        required:true
+        required:true,
+        unique:true,
+        lowercase:true,
+        trim:true
     }
 },{timestamps:true});
 

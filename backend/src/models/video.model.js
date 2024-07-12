@@ -1,4 +1,5 @@
 import mongoose,{Schema} from "mongoose";
+import mongooseAggregatePaginate from "mongoose-aggregate-paginate-v2";
 
 const videoSchema = new Schema({
     title:{
@@ -27,16 +28,10 @@ const videoSchema = new Schema({
         type:Schema.Types.ObjectId,
         ref:"User"
     },
-    likes:{
+    likesCount:{
         type:Number,
         default:0
     },
-    comments:[
-        {
-        type:Schema.Types.ObjectId,
-        ref:"Comment"
-    }
-],
     tags:[
         {
             type:Schema.Types.ObjectId,
@@ -50,4 +45,6 @@ const videoSchema = new Schema({
 },
     {timestamps:true});
 
+
+videoSchema.plugin(mongooseAggregatePaginate);
 export const Video = mongoose.model("Video",videoSchema);

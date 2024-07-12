@@ -1,6 +1,5 @@
 import mongoose,{Schema} from "mongoose";
-
-
+import mongooseAggregatePaginate from "mongoose-aggregate-paginate-v2";
 
 const discussionSchema = new Schema({
     owner:{
@@ -18,22 +17,21 @@ const discussionSchema = new Schema({
         required:true,
         trim:true
     },
-    likes:{
+    likesCount:{
         type:Number,
         default:0
     },
-    comments:[
-        {
-        type:Schema.Types.ObjectId,
-        ref:"Comment"
-    }
-]
-,tags:[
+    tags:[
     {
         type:Schema.Types.ObjectId,
         ref:"Tag"
     }
-]
+],
+    isPublished:{
+        type:Boolean,
+        default:true
+    }
 },{timestamps:true});
 
+discussionSchema.plugin(mongooseAggregatePaginate);
 export const Discussion = mongoose.model("Discussion",discussionSchema);

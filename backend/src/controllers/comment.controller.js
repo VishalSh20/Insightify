@@ -4,10 +4,69 @@ import {ApiError} from "../utils/ApiError.util.js"
 import {ApiResponse} from "../utils/ApiResponse.util.js"
 import {asyncHandler} from "../utils/asyncHandler.util.js"
 
-const getVideoComments = asyncHandler(async (req, res) => {
+const getComments = asyncHandler(async (req, res) => {
     //TODO: get all comments for a video
-    const {videoId} = req.params
-    const {page = 1, limit = 10} = req.query
+    const {targetType,targetId} = req.params
+    const {page = 1, limit = 10 , sortBy = 'asc',sortType ='asc'} = req.query
+
+    let matchStage = {isPublished:true};
+    switch(targetType){
+      case "video":
+        matchStage.videoId = new mongoose.Types.ObjectId(targetId);
+        break;
+      case "blog" :
+        matchStage.blogId = new mongoose.Types.ObjectId(targetId);
+        break;
+      case "discussion":
+        matchStage.discussionId = new mongoose.Types.ObjectId(targetId);;
+        break;
+      default:
+        throw new ApiError("Invalid Target type");
+    }
+
+    let sortStage = {};
+    if(sortBy){
+      sortStage[sortBy] = (sortType==='asc' || sortType==='1') ? 1 : -1;
+    }
+    const pipeline = [
+      {$match: matchStage},
+       {$lookup: {
+                from:"users",
+                localField:"owner",
+                foreignField:"_id",
+                as:"owner",
+                pipeline:[
+                 {
+                    $project:{
+                        username:1,email:1,avatar:1,fullName:1
+                    }
+                 }
+                ]
+            }
+        },
+        {
+            $lookup:{
+                from:"likes",
+                localField:"_id",
+                foreignField:"commentId",
+                as:"likes"
+            }
+        },
+        {
+          $addFields:{
+            likesCount:{$size:"$likes"}
+          }
+        },
+        {
+            $project:{
+                content:1,owner:1,likesCount:1,createdAt:1
+            }
+        },
+    {$sort: {createdAt:1}}];
+    const comments = await Comment.aggregatePaginate(pipeline,{page,limit});
+    res
+    .status(200)
+    .json(new ApiResponse(200,"Comments fetched successfully"));
 
 })
 
@@ -42,8 +101,7 @@ const addComment = asyncHandler(async (req, res) => {
     
   });
   
-  
-  const updateComment = asyncHandler(async (req, res) => {
+const updateComment = asyncHandler(async (req, res) => {
   
       const commentId = req.params.commentId || req.query.commentId;
       const commentObjectId = new mongoose.Types.ObjectId(commentId);
@@ -70,7 +128,7 @@ const addComment = asyncHandler(async (req, res) => {
 
   });
   
-  const deleteComment = asyncHandler(async (req, res) => {
+const deleteComment = asyncHandler(async (req, res) => {
     try {
       const commentId = req.params.commentId || req.query.commentId;
       const commentObjectId = new mongoose.Types.ObjectId(commentId);
@@ -91,8 +149,8 @@ const addComment = asyncHandler(async (req, res) => {
   });
 
 export {
-    getVideoComments, 
+    getComments, 
     addComment, 
     updateComment,
-     deleteComment
-    }
+    deleteComment
+}

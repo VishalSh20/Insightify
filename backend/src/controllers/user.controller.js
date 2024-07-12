@@ -45,16 +45,12 @@ const signupUser = asyncHandler(async(req,res)=>{
     if(existingUser)
         throw new ApiError(403,"Username not available")
 
-    const avatarLocalPath = req.files?.avatar?.path;
-    console.log(avatarLocalPath);
+    const avatarLocalPath = req.file?.path;
     
-    try{
-        const avatar = await uploadOnCloudinary(avatarLocalPath,"users",username);
-    }
-    catch(error){
-        console.error(error);
-    }
-    
+    const avatar = await uploadOnCloudinary(avatarLocalPath,username,"image");
+    if(!avatar)
+        throw new ApiError(500,"Unable to upload avatar");
+
     const user = await User.create({
         username,
         email,
@@ -335,9 +331,8 @@ const changeAvatar = asyncHandler(async(req,res)=>{
        console.error("Old file removal failed");
     }
    }
-   
  
-    const updatedAvatar = await uploadOnCloudinary(newAvatarPath,users,user.username);
+    const updatedAvatar = await uploadOnCloudinary(newAvatarPath,req.user.username,"image");
     if(!updatedAvatar)
         throw new ApiError(500,"Avatar upload failed");
     const user = await User.findByIdAndUpdate(req.user._id,{

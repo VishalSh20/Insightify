@@ -12,16 +12,16 @@ const toggleLike = asyncHandler(async (req, res) => {
   let existingLike;
   switch(targetType){
     case "video":
-        existingLike = await Like.findOne({videoId:targetObjectId,likedBy:userId});
+        existingLike = await Like.findOne({videoId:targetObjectId,likedBy:userId ,isPublished:true});
         break;
     case "blog":
-        existingLike = await Like.findOne({blogId:targetObjectId,likedBy:userId});
+        existingLike = await Like.findOne({blogId:targetObjectId,likedBy:userId,isPublished:true});
         break;
     case "discussion":
-        existingLike = await Like.findOne({discussionId:targetObjectId,likedBy:userId});
+        existingLike = await Like.findOne({discussionId:targetObjectId,likedBy:userId,isPublished:true});
         break;
     case "comment":
-        existingLike = await Like.findOne({commentId:targetObjectId,likedBy:userId});
+        existingLike = await Like.findOne({commentId:targetObjectId,likedBy:userId,isPublished:true});
         break;
   }
 

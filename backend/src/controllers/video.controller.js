@@ -1,4 +1,4 @@
-import mongoose, {isValidObjectId} from "mongoose"
+import mongoose, {isValidObjectId, mongo, Mongoose} from "mongoose"
 import {Video} from "../models/video.model.js"
 import {User} from "../models/user.model.js"
 import {ApiError} from "../utils/ApiError.util.js"
@@ -6,21 +6,85 @@ import {ApiResponse} from "../utils/ApiResponse.util.js"
 import {asyncHandler} from "../utils/asyncHandler.util.js"
 import {uploadOnCloudinary,deleteResourceByUrl} from "../utils/cloudinary.util.js"
 
-const folder = "videos";
-
 const getAllVideos = asyncHandler(async (req, res) => {
-    const { page = 1, limit = 10, query, sortBy, sortType, userId } = req.query
+    const { page = 1, limit = 10, query, sortBy = 'createdAt', sortType='asc'} = req.query
     //TODO: get all videos based on query, sort, pagination
+    const {tags,userIds} = req.body;
+
+    let matchStage = {isPublished:true};
+    if(query){
+        matchStage.title = { $regex: query, $options: 'i' };
+        matchStage.description = { $regex: query, $options: 'i' };
+    }
+    if(userIds){
+        let userObjectIds = [];
+        userIds.forEach(id => {userObjectIds.push(new mongoose.Types.ObjectId(id))});
+        matchStage.owner = {$in : userObjectIds};
+    }
+    if(tags){
+        let tagObjectIds = [];
+        tags.forEach(id => {tagObjectIds.push(new mongoose.Types.ObjectId(id))});
+        matchStage.tags = {$in :tagObjectIds};
+    }
+
+    let sortStage = {};
+    if(sortBy){
+        sortStage[sortBy] = (sortType==='asc' || sortType==='1') ? 1: -1;
+    }
+
+    const pipeline = [
+        {$match : matchStage},
+        {$lookup: {
+                from:"users",
+                localField:"owner",
+                foreignField:"_id",
+                as:"owner",
+                pipeline:[
+                 {
+                    $project:{
+                        username:1,email:1,avatar:1,fullName:1
+                    }
+                 }
+                ]
+            }
+        },
+        {
+            $addFields:{owner :{$first:"$owner"}}
+        },
+        {
+            $lookup:{
+                from:"likes",
+                localField:"_id",
+                foreignField:"videoId",
+                as:"likes"
+            }
+        },
+        {
+          $addFields:{
+            likesCount:{$size:"$likes"}
+          }
+        },
+        {
+            $project:{
+                title:1,thumbnail:1,videoFile:1,duration:1,owner:1,likesCount:1,createdAt:1
+            }
+        },
+        {$sort: sortStage}
+    ];
+
+    const videos = await Video.aggregatePaginate(pipeline,{page:page , limit: limit});
+    res
+    .status(200)
+    .json(new ApiResponse(200,"Videos fetched successfully",videos));
+
 })
 
 const publishAVideo = asyncHandler(async (req, res) => {
     // TODO: get video, upload to cloudinary, create video
-    let { title, description} = req.body;
+    const { title, description="" , tags=[]} = req.body;
     if(!title)
         throw new ApiError(400,"Title is required");
 
-    // tags = tags || [];
-    description = description || "";
     const owner = new mongoose.Types.ObjectId(req.user?._id);
 
     const thumbnailLocalPath = req.files?.thumbnail[0]?.path;
@@ -28,8 +92,8 @@ const publishAVideo = asyncHandler(async (req, res) => {
     if(!thumbnailLocalPath || !videoFileLocalPath)
         throw new ApiError(400,"Thumbnail or video file is missing");
 
-    const thumbnail = await uploadOnCloudinary(thumbnailLocalPath,folder,req.user.username);
-    const videoFile = await uploadOnCloudinary(videoFileLocalPath,folder,req.user.username);
+    const thumbnail = await uploadOnCloudinary(thumbnailLocalPath,req.user.username,"image");
+    const videoFile = await uploadOnCloudinary(videoFileLocalPath,req.user.username,"video");
     if(!thumbnail || !videoFile){
         if(thumbnail){
             await deleteResourceByUrl(thumbnail.url);
@@ -40,7 +104,7 @@ const publishAVideo = asyncHandler(async (req, res) => {
         throw new ApiError(500,"Video upload failed");
     }
 
-    console.log(videoFile);
+    const tagObjectIds = tags.map((tagId)=>new mongoose.Types.ObjectId(tagId));
     try {
         const video = await Video.create(
             {
@@ -49,7 +113,8 @@ const publishAVideo = asyncHandler(async (req, res) => {
                 thumbnail:thumbnail.url,
                 duration:Math.floor(videoFile.duration),
                 owner,
-                description
+                description,
+                tags:tagObjectIds
             }
         )
 
@@ -85,7 +150,8 @@ const getVideoById = asyncHandler(async (req, res) => {
         [
             {
                 $match:{
-                    _id: videoObjectId
+                    _id: videoObjectId,
+                    isPublished:true
                 }
             },
             {
@@ -95,19 +161,6 @@ const getVideoById = asyncHandler(async (req, res) => {
                     foreignField:"_id",
                     as:"owner",
                     pipeline:[
-                        {
-                            $lookup:{
-                                from:"follows",
-                                localField:"_id",
-                                foreignField:"followedTo",
-                                as:"followers"
-                            }
-                        },
-                        {
-                            $addFields:{
-                                followerCount:{$size:"$followers"}
-                            }
-                        },
                         {
                             $project:{fullName:1,username:1,avatar:1,followerCount:1}
                         }
@@ -120,8 +173,21 @@ const getVideoById = asyncHandler(async (req, res) => {
                 }
             },
             {
+                $lookup:{
+                    from:"tags",
+                    localField:"tags",
+                    foreignField:"_id",
+                    as:"tags",
+                    pipeline:[
+                        {
+                            $project:{name:1}
+                        }
+                    ]
+                }
+            },
+            {
                 $project:{
-                    title:1,videoFile:1,thumbnail:1,duration:1,owner:1
+                    title:1,videoFile:1,thumbnail:1,duration:1,owner:1,createdAt:1,tags:1
                 }
             }
         ]
@@ -149,22 +215,19 @@ const updateVideoDetails = asyncHandler(async (req, res) => {
         throw new ApiError(404,"Video does not exist");
 
     const userId = new mongoose.Types.ObjectId(req.user._id);
-    console.log(existingVideo.owner);
-    console.log(userId);
-    console.log((existingVideo.owner).equals(userId))
-
     if(!(existingVideo.owner).equals(userId))
         throw new ApiError(401,"Unauthorised attempt to delete resource");
 
     let updateFields = {};
-    const {title,description} = req.body;
+    const {title,description,tags} = req.body;
     if(title) updateFields.title = title;
     if(description) updateFields.description = description;
+    if(tags) updateFields.tags = tags.map((tagId)=>new mongoose.Types.ObjectId(tagId));
 
     const newThumbnailLocalPath = req.file?.path;
     const existingThumbnailURL = existingVideo.thumbnail;
     if(newThumbnailLocalPath){
-        const newThumbnail = await uploadOnCloudinary(newThumbnailLocalPath,folder,req.user.username);
+        const newThumbnail = await uploadOnCloudinary(newThumbnailLocalPath,req.user.username,"image");
         if(newThumbnail){
             updateFields.thumbnail = newThumbnail.url;
         }
@@ -195,6 +258,31 @@ const updateVideoDetails = asyncHandler(async (req, res) => {
     );
 
 })
+
+const addTagToVideo = asyncHandler(async(req,res)=>{
+    const {videoId} = req.params;
+    if(!videoId)
+        throw new ApiError(400,"Video Id is required");
+    const videoObjectId = new mongoose.Types.ObjectId(videoId);
+    const video = await Video.findById(videoObjectId);
+    if(!video)
+        throw new ApiError(404,"Video does not exist");
+
+    const {tag} = req.body;
+    if(!tag)
+        throw new ApiError(400,"Tag is required");
+    const tagObjectId = new mongoose.Types.ObjectId(tag);
+
+    if(video.tags.includes(tagObjectId))
+        throw new ApiError(403,"Tag already exists");
+
+    video.tags.push(tagObjectId);
+    await video.save();
+
+    res
+    .status(200)
+    .json(new ApiResponse(200,"Tag added successfully",{tags:video.tags}));
+}); 
 
 const deleteVideo = asyncHandler(async (req, res) => {
     const videoId = req.params.videoId || req.query.videoId;
@@ -254,6 +342,7 @@ export {
     publishAVideo,
     getVideoById,
     updateVideoDetails,
+    addTagToVideo,
     deleteVideo,
     togglePublishStatus
 }

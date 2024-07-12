@@ -17,7 +17,7 @@ const extractPublicId = (url) => {
     return publicId;
   };
   
-  const deleteResourceByUrl = async (url) => {
+const deleteResourceByUrl = async (url) => {
     const publicId = url ? extractPublicId(url) : "";
     try {
       const result = await cloudinary.uploader.destroy(publicId);
@@ -27,19 +27,18 @@ const extractPublicId = (url) => {
     }
   };
 
-const uploadOnCloudinary = async (localFilePath,username,resource) => {
+const uploadOnCloudinary = async (localFilePath,username,fileType) => {
     try {
         if (!localFilePath) {
+            console.log("one");
             return null;
         }
         
         const response = await cloudinary.uploader.upload(localFilePath, {
             resource_type: "auto",
-            folder: (username) ? `TechMate/${username}/${resource}` : 'TechMate/others'
+            folder: (username) ? `TechMate/users/${username}/${fileType}` : 'TechMate/others'
         })
 
-        // file has been uploaded successfull
-        //console.log("file is uploaded on cloudinary ", response.url);
         fs.unlinkSync(localFilePath)
         console.log("two:",response);
         return response;

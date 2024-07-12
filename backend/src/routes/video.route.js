@@ -4,6 +4,7 @@ import {
     getAllVideos,
     getVideoById,
     publishAVideo,
+    addTagToVideo,
     togglePublishStatus,
     updateVideoDetails,
 } from "../controllers/video.controller.js"
@@ -37,6 +38,7 @@ router
     .delete(deleteVideo)
     .patch(upload.single("thumbnail"), updateVideoDetails);
 
+router.route("/:videoId/tags").patch(addTagToVideo);
 router.route("/toggle/publish/:videoId").patch(togglePublishStatus);
 
 export default router

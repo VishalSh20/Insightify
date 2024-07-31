@@ -37,6 +37,11 @@ const blogSchema = new Schema({
     isPublished:{
         type:String,
         default:true
+    },
+    slug:{
+        type:String,
+        unique:true,
+        required:true
     }
 },{timestamps:true});
 

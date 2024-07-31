@@ -76,12 +76,21 @@ const getAllBlogs = asyncHandler(async(req,res)=>{
 });
 
 const publishBlog = asyncHandler(async(req,res)=>{
+    req
+    .status(200)
+    .json(new ApiResponse(201,"pahuch to gaya",{hello:"hello"}));
     const user = req.user;
     const {title,description,content,tags,isPublished} = req.body;
     if(!title || !content)
         throw new ApiError(400,"Title and Content are required");
+   
+    const slug = title
+    .split(' ')
+    .join('-')
+    .toLowerCase()
+    .replace(/[^a-zA-Z0-9-]/g, '');
 
-    let uploadFields = {title,content,isPublished};
+    let uploadFields = {title,content,slug,isPublished};
     uploadFields.description = description || "";
     uploadFields.owner = new mongoose.Types.ObjectId(req.user?._id);
     uploadFields.tags = (tags || []).map((tagId)=> new mongoose.Types.ObjectId(tagId));

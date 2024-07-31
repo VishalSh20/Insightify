@@ -1,12 +1,16 @@
 import React, { useEffect, useRef, useState } from 'react'
-import {TextInput,FileInput, Button} from 'flowbite-react'
+import {TextInput,FileInput, Button, Spinner} from 'flowbite-react'
 import {Editor} from '@tinymce/tinymce-react'
+import axios from 'axios'
 
 import { useSelector } from 'react-redux';
 import { FaSave, FaUpload } from 'react-icons/fa';
 import { MdDeleteOutline } from 'react-icons/md';
 
 function PostArticle() {
+    const {accessToken} = useSelector(state=>state.user);
+    const [uploading,setUploading] = useState(false);
+    const [uploadingError,setUploadingError] = useState(null);
     const [title,setTitle] = useState('');
     const [tags,setTags] = useState([]);
     const [coverImage,setCoverImage] = useState(null);
@@ -27,31 +31,69 @@ function PostArticle() {
     },[theme]);
 
     const uploadArticleHandler = async() => {
-        console.log(formData);
+        const requestBody = new FormData();
+        for(const field in formData){
+          requestBody.append(field,formData[field]);
+        }
+        requestBody.append('coverImage',coverImage);
+
+        try {
+          setUploading(true);
+          const response = await axios.post(`${'https://localhost:4000/api/v1'}/blog/`, requestBody,
+            {headers:{
+              "Authorization" : `Bearer ${accessToken}`
+            }}
+          );
+          console.log('Data:', response.data);
+        } catch (error) {
+          console.log(error);
+            setUploading(false);
+          if (error.response) {
+            // Server responded with a status other than 200 range
+            console.log('Error Message:', error.response.data.message);
+          } else if (error.request) {
+            // Request was made but no response was received
+            console.log('Error Request:', error.request);
+          } else {
+            // Something else happened in making the request
+            console.log('Error Message:', error.message);
+          }
+        }
+            
+          setUploading(false);
+        // }
+        // catch(error){
+        //   console.log(error);
+        //   setUploading(false);
+        //   setUploadingError(true);
+        // }
+
     }
 
   return (
     <div>
       <div className='flex flex-col gap-2'>
       <div className='flex w-full items-center justify-between p-4'>
-  <h1 className='font-bold text-black dark:text-purple-800 text-3xl flex-1 text-center'>
+  <h1 className='font-serif font-bold text-black dark:text-purple-800 text-3xl flex-1 text-center'>
     Article Draft
   </h1>
        <div className='flex gap-2'>
          <Button className='bg-gradient-to-r from-blue-500 to-pink-500 text-white' outline
+            disabled = {uploading}
             onClick={()=>{
                 setFormData({...formData,isPublished:false})
                 uploadArticleHandler()
             }}         
          >
-           <FaSave /> as Draft
+           {uploading ? <Spinner/> : <span><FaSave /> as Draft</span>}
          </Button>
          <Button className='bg-gradient-to-r from-blue-500 to-purple-500 text-white'  outline
+          disabled = {uploading}
           onClick={()=>{
             setFormData({...formData,isPublished:true})
             uploadArticleHandler(false)}} 
          >
-           Publish
+           {uploading ? <Spinner/> :<span>Publish</span>}
          </Button>
        </div>
      </div>
@@ -141,6 +183,7 @@ function PostArticle() {
                 <div className='outline-1 outline-blue-500'>
                 <Editor
                     key={editorKey}
+                    value={content}
                     apiKey='9lk9xt3oj76yxw9t6kyeqfl07yqx4njgqrbq5kgevnjlkxos'
                     init={{
                         selector: ['textarea'],

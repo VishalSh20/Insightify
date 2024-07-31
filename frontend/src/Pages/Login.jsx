@@ -25,7 +25,7 @@ const Login = () => {
         try {
           dispatch(loginStart());
           console.log(formData, typeof formData);
-          const res = await fetch('http://localhost:4000/api/v1/users/login', {
+          const res = await fetch(`${import.meta.env.VITE_BACKEND_URL}/users/login`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(formData),

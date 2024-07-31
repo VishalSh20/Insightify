@@ -28,7 +28,7 @@ const verifyAccessToken = asyncHandler(async (req, res, next) => {
     if (error instanceof jwt.JsonWebTokenError) {
       throw new ApiError(401, "Access token expired or invalid");
     } else {
-      throw error;
+      throw new ApiError(error.message);
     }
   }
 });

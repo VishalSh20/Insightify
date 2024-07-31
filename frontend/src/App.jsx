@@ -1,20 +1,36 @@
-import React from 'react'
-import {BrowserRouter,Route,Routes} from 'react-router-dom'
-import Signin from './Pages/Signin'
-import Signup from './Pages/Signup'
+import React ,{ useState } from 'react'
+import {createBrowserRouter,createRoutesFromElements, Route, RouterProvider} from 'react-router-dom'
+import Layout from './components/Layout'
 import Home from './Pages/Home'
-import About from './Pages/About'
-import Header from './components/Header'
+import Signup from './Pages/Signup'
+import Login from './Pages/Login'
+import DashBoard from './Pages/DashBoard'
+import Settings from './Pages/Settings'
+import PrivateRoute from './components/PrivateRoute'
+import CreatePost from './Pages/CreatePost'
 
-export default function App() {
+
+const router = createBrowserRouter(
+  createRoutesFromElements(
+    <Route path='/' element=<Layout/> >
+      <Route path='' element= <Home /> />
+      <Route path='signup' element= <Signup/> />
+      <Route path='login' element= <Login/> />
+      <Route element=<PrivateRoute/> >
+      <Route path='dashboard' element=<DashBoard/> />
+      <Route path='settings' element=<Settings/> />
+      <Route path='create-post/:postType' element=<CreatePost/> />
+      
+      </Route>
+    </Route>
+  )
+)
+
+function App() {
+ 
   return (
-    <BrowserRouter>
-      <Header/>
-      <Routes>
-        <Route path='/' element={<Home/>} />
-        <Route path='/signin' element={<Signin/>}/>
-        <Route path='/signup' element={<Signup/>}/>
-      </Routes>
-    </BrowserRouter>
+        <RouterProvider router={router} />
   )
 }
+
+export default App

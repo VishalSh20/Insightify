@@ -20,6 +20,7 @@ import blogRouter from "./routes/blog.route.js"
 import discussionRouter from "./routes/discussion.route.js"
 import healthcheckRouter from "./routes/healthcheck.route.js"
 import tagRouter from "./routes/tag.route.js"
+import { errorHandler } from "./middlewares/errorHandler.middleware.js";
 
 // routes
 app.use("/api/v1/users",userRouter);
@@ -32,5 +33,12 @@ app.use("/api/v1/discussion",discussionRouter);
 app.use("/api/v1/tag",tagRouter);
 app.use("/api/v1/healthcheck",healthcheckRouter);
 
+app.use((err,req,res,next) => {
+    const {message} = err
+    console.log(message)
+    res
+    .status(err.statusCode)
+    .json({message});
+});
 
 export {app};

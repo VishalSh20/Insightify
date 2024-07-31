@@ -19,7 +19,7 @@ router.route("/signup").post(upload.single("avatar",),signupUser);
 router.route("/login").post(loginUser);
 router.route("/logout").get(verifyAccessToken,logoutUser);
 router.route("/refresh-token").get(refreshAccessToken);
-router.route("/update-details").post(verifyAccessToken,updateUserDetails);
+router.route("/update-details").post(verifyAccessToken,upload.single("avatar"),updateUserDetails);
 router.route("/change-password").patch(verifyAccessToken,changeCurrentPassword);
 router.route("/change-avatar").patch(verifyAccessToken,upload.single("avatar"),changeAvatar);
 router.route("/current-user").get(verifyAccessToken,getCurrentUser);

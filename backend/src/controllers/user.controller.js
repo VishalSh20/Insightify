@@ -27,8 +27,8 @@ const generateAccessAndRefereshTokens = async(userId) =>{
 };
 
 const signupUser = asyncHandler(async(req,res)=>{
-    const {username,email,password,fullName,bio} = req.body;
-    if([username,email,password,fullName].includes(undefined))
+    const {username,email,password,fullName="User",bio} = req.body;
+    if([username,email,password].includes(undefined))
         throw new ApiError(400,"All fields are required");
 
     if(email.indexOf('@') === -1)
@@ -47,9 +47,9 @@ const signupUser = asyncHandler(async(req,res)=>{
 
     const avatarLocalPath = req.file?.path;
     
-    const avatar = await uploadOnCloudinary(avatarLocalPath,username,"image");
-    if(!avatar)
-        throw new ApiError(500,"Unable to upload avatar");
+    const avatar = (avatarLocalPath) ? await uploadOnCloudinary(avatarLocalPath,username,"image") : {url:""};
+    // if(!avatar)
+    //     throw new ApiError(500,"Unable to upload avatar");
 
     const user = await User.create({
         username,
@@ -81,7 +81,6 @@ const loginUser = asyncHandler(async (req, res) =>{
     //password check
     //access and referesh token
     //send cookie
-
     const {email, username, password} = req.body;
 
     if (!username && !email) {
@@ -102,7 +101,7 @@ const loginUser = asyncHandler(async (req, res) =>{
    const isPasswordValid = await user.comparePassword(password.trim());
 
    if (!isPasswordValid) {
-    throw new ApiError(401, "Invalid user credentials")
+    throw new ApiError(401,"Incorrect Password");
     }
 
    const {accessToken, refreshToken} = await generateAccessAndRefereshTokens(user._id)
@@ -286,20 +285,45 @@ const getUserProfile = asyncHandler(async(req,res)=>{
 });
 
 const updateUserDetails = asyncHandler(async(req,res)=>{
-   const {fullName,bio} = req.body;
-   if([fullName,bio].includes(undefined))
-    throw new ApiError("All fields are required");
+   console.log("Here");
+   const {fullName="",username="",tagline="",bio="",links=[],deleteCurrentAvatar=false} = req.body;
+   console.log(req.body);
+    
+   const existingUser = await User.findOne({username});
+   if(username){
+    if(existingUser && req.user.username !== username.toLowerCase())
+        throw new ApiError(403,"Username not available");
+   }
 
-   await User.findByIdAndUpdate(req.user.id,{
+   const avatarLocalPath = req.file?.path;
+   const currentAvatar = req.user.avatar;
+   if(deleteCurrentAvatar){
+      await deleteResourceByUrl(currentAvatar);
+      await User.findByIdAndUpdate(req.user._id,{$set:{avatar:""}})
+   }
+       
+   if(avatarLocalPath){
+       const newAvatar = await uploadOnCloudinary(avatarLocalPath,req.user.username,'image');
+       if(!newAvatar)
+        throw new ApiError(500,"Error in Uploading Avatar");
+    
+     await User.findByIdAndUpdate(req.user._id,{$set:{avatar:newAvatar.url}});
+    }
+
+
+   const updatedUser = await User.findByIdAndUpdate(req.user.id,{
     $set:{
         fullName,
-        bio
+        username,
+        tagline,
+        bio,
+        links:links || []
     }
-   });
+   },{new:true});
 
    res
    .status(200)
-   .json(new ApiResponse(200,"User updated successfully"));
+   .json(new ApiResponse(200,"User updated successfully",{user:updatedUser}));
 });
 
 const changeCurrentPassword = asyncHandler(async(req, res) => {

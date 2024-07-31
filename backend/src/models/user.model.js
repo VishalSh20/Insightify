@@ -2,6 +2,22 @@ import mongoose,{mongo, Schema} from "mongoose";
 import bcrypt from "bcrypt";
 import jwt from 'jsonwebtoken';
 
+const linkSchema = new Schema({
+    label:{
+        type:String,
+        required:true,
+        unique:true,
+        enum:[
+            "linkedin",
+            "x","leetcode","codechef","codeforces","hashnode","website"
+        ]
+    },
+    url:{
+        type:String,
+        required:true
+    }
+})
+
 const userSchema = new Schema({
     username:{
         type:String,
@@ -28,6 +44,10 @@ const userSchema = new Schema({
         trim:true,
         minLen:8
     },
+    tagline:{
+        type:String,
+        maxLen:100
+    },
     bio:{
         type:String,
         trim:true
@@ -36,6 +56,7 @@ const userSchema = new Schema({
         type:String,
         trim:true
     },
+    links:[linkSchema],
     refreshToken:{
         type:String
     }

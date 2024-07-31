@@ -77,11 +77,11 @@ const getAllBlogs = asyncHandler(async(req,res)=>{
 
 const publishBlog = asyncHandler(async(req,res)=>{
     const user = req.user;
-    const {title,description,content,tags} = req.body;
+    const {title,description,content,tags,isPublished} = req.body;
     if(!title || !content)
         throw new ApiError(400,"Title and Content are required");
 
-    let uploadFields = {title,content};
+    let uploadFields = {title,content,isPublished};
     uploadFields.description = description || "";
     uploadFields.owner = new mongoose.Types.ObjectId(req.user?._id);
     uploadFields.tags = (tags || []).map((tagId)=> new mongoose.Types.ObjectId(tagId));

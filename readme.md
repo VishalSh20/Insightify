@@ -1,6 +1,6 @@
-# TechMate
+# Insightify
 
-TechMate is a platform where users can upload videos, participate in discussions, and write blog articles related to tech content and queries. It provides a space for tech enthusiasts to share knowledge, learn from others, and engage in meaningful conversations.
+Insightify is a platform where users can upload videos, participate in discussions, and write blog articles related to tech content and queries. It provides a space for tech enthusiasts to share knowledge, learn from others, and engage in meaningful conversations.
 
 ## Features
 

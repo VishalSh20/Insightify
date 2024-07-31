@@ -24,7 +24,7 @@ const verifyAccessToken = asyncHandler(async(req,res,next)=>{
      next();
    } catch (error) {
         res
-        .json({code:400,error:error.message});
+        .json({code:400,error});
    }
 
 });

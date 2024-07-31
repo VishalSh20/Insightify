@@ -5,7 +5,7 @@ const errorHandler = (err,req,res,next) => {
         console.log("Here ");
         res
         .status(err.statusCode)
-        .json(err)
+        .json(err.message)
 };
 
 export {errorHandler}

@@ -23,9 +23,8 @@ const verifyAccessToken = asyncHandler(async(req,res,next)=>{
      req.user = user;
      next();
    } catch (error) {
-        res.json({error:error.message});
-       console.log(error.message);
-       throw new ApiError(error.message);
+        res
+        .json({code:400,error:error.message});
    }
 
 });

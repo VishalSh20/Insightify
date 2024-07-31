@@ -39,12 +39,12 @@ function PostArticle() {
 
         try {
           setUploading(true);
-          const response = await axios.post(`${'https://localhost:4000/api/v1'}/blog/`, requestBody,
+          const response = await axios.post(`${import.meta.env.VITE_BACKEND_URL}/blog/`, requestBody,
             {headers:{
               "Authorization" : `Bearer ${accessToken}`
             }}
           );
-          console.log('Data:', response.data);
+          console.log('Data:', response);
         } catch (error) {
           console.log(error);
             setUploading(false);

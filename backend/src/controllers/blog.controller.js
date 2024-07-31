@@ -76,7 +76,7 @@ const getAllBlogs = asyncHandler(async(req,res)=>{
 });
 
 const publishBlog = asyncHandler(async(req,res)=>{
-    req
+    res
     .status(200)
     .json(new ApiResponse(201,"pahuch to gaya",{hello:"hello"}));
     const user = req.user;

@@ -127,7 +127,7 @@ const loginUser = asyncHandler(async (req, res) =>{
 });
 
 const logoutUser = asyncHandler(async(req,res)=>{
-    res.json("Ab karunga logout");
+    
     const user = req.user;
     await User.findByIdAndUpdate(user._id,{
         $unset:{refreshToken:1}
